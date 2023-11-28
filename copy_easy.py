@@ -34,6 +34,7 @@ def relu_deriv(t):
 
 
 
+
 # W1 = (W1 - 0.5) * 2 * np.sqrt(1/INPUT_DIM)
 # b1 = (b1 - 0.5) * 2 * np.sqrt(1/INPUT_DIM)
 # W2 = (W2 - 0.5) * 2 * np.sqrt(1/H_DIM)
@@ -57,6 +58,7 @@ for ep in range(NUM_EPOCHS):
         h1 = relu(t1)
         t2 = h1 @ W2 + b2
         z = softmax(t2)
+        print(type(z), z)
         E = sparse_cross_entropy(z, y)
 
         # Backward
