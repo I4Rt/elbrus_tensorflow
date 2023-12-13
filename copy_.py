@@ -8,7 +8,7 @@ H_DIM = 10
 def relu(t):
     return np.maximum(t, 0)
 
-def softmax(t):
+def softmax(t, dif = False):
     out = np.exp(t)
     return out / np.sum(out)
 

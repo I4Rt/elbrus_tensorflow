@@ -1,0 +1,9 @@
+IRIS_800:
+    ADAM:
+        Softmax: 10.635685920715332 sec.
+        Sigmoid: 10.337841987609863 sec.
+        Tanh:
+    NO_ADAM:
+        Softmax: 7.48378586769104 sec.
+        Sigmoid: 7.37995719909668 sec.
+        Tanh:
