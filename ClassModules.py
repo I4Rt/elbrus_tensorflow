@@ -1,7 +1,8 @@
 from __future__ import annotations
 import numpy as np
-np.seterr(divide='ignore', invalid='ignore')
+from time import sleep, time
 
+np.seterr(divide='ignore', invalid='ignore')
 
 ts = []
 
@@ -77,9 +78,26 @@ def to_full(y, num_classes):
     y_full[0, y] = 1
     return y_full
 
-class BatchNormalization:
+class Layer:
+    def recalculate(self):
+        pass
     
-    def __init__(self, in_:NeuronLayer|InputLayer, neurons_count, activation_func, optimizer1 = BaseOprimizer(), optimizer2 = BaseOprimizer()):
+    def get_results(self):
+        pass
+    
+    def get_outs_number(self):
+        pass
+    
+    def evaluate(self, y, is_last = True, learning_rate=0.00002, input_ = None, ce_type = 1):
+        pass
+    
+    def setIn(self, in_):
+        pass
+    
+    
+class BatchNormalization(Layer):
+    
+    def __init__(self, in_:Dense|InputLayer, neurons_count, activation_func, optimizer1:Optimizer = BaseOprimizer(), optimizer2:Optimizer = BaseOprimizer()):
         self.prev_layer = in_
         
         self.__H_DIM = self.prev_layer.get_outs_number()
@@ -138,22 +156,29 @@ class BatchNormalization:
         return self.prev_layer.evaluate(dE_dh_prev, is_last=False)
     
     
-class NeuronLayer:
-    
-    def __init__(self, in_:NeuronLayer|InputLayer, neurons_count, activation_func, optimizer1 = BaseOprimizer(), optimizer2 = BaseOprimizer()):
-        self.prev_layer = in_
-        self.__H_DIM = neurons_count
-        self.W = np.random.rand(self.prev_layer.get_outs_number(), self.__H_DIM)
+class Dense(Layer):
+    def __init__(self, units, activation, optimizer1:Optimizer = BaseOprimizer(), optimizer2:Optimizer = BaseOprimizer(), in_:Layer = None, input_shape = None):
+        self.__H_DIM = units
+        if input_shape:
+            self.prev_layer = InputLayer(input_shape)
+            self.W = np.random.rand(self.prev_layer.get_outs_number(), self.__H_DIM)
+        elif in_:
+            self.prev_layer = in_
+            self.W = np.random.rand(self.prev_layer.get_outs_number(), self.__H_DIM)
+        else:
+            self.W = np.array([])
         self.b = np.random.rand(1, self.__H_DIM)
         self.W = (self.W - 0.5) * 2 * np.sqrt(1/self.__H_DIM)     # new
         self.b = (self.b - 0.5) * 2 * np.sqrt(1/self.__H_DIM)     # new
         
-        self.func = activation_func
+        self.func = activation
         self.outs = None
         self.optimizer1 = optimizer1
         self.optimizer2 = optimizer2
         
-
+    def setIn(self, in_):
+        self.prev_layer = in_
+        self.W = np.random.rand(self.prev_layer.get_outs_number(), self.__H_DIM)
    
     def recalculate(self):
         t = self.prev_layer.get_results() @ self.W + self.b
@@ -166,8 +191,6 @@ class NeuronLayer:
         
     def get_outs_number(self) -> int:
         return self.__H_DIM
-
-
 
     def evaluate(self, y, is_last = True, learning_rate=0.00002, input_ = None, ce_type = 1):
         if is_last:       # where is softmax???
@@ -223,36 +246,46 @@ class InputLayer:
     def get_results(self) -> np.ndarray:
         return self.X
 
-from time import sleep
-class Model:
+
+class Sequential:
     
-    def __init__(self, layers:list[list[int, function, ]], optimizer:Optimizer, type_='crossentropy', ALPHA = 0.0002 , class_number = 2):
+    def __init__(self, optimizer:Optimizer|str, layers:list[Layer] = [], type_='crossentropy', ALPHA = 0.0002 , class_number = 2):
         
-        self.layers: list[InputLayer | NeuronLayer] = []
-        try:
-            if len(layers) < 2:
-                raise IndexError()
-            # [in_num, activator, *args]
-            l0_data = layers.pop(0)
-            l0 = InputLayer(l0_data[0])
-            self.layers.append(l0)
-            for l_data in layers:
-                if optimizer == 'Adam':
-                    local_optimizer1 = Adam()
-                    local_optimizer2 = Adam()
-                else:
-                    local_optimizer1 = BaseOprimizer()
-                    local_optimizer2 = BaseOprimizer()
-                l = NeuronLayer(self.layers[-1], l_data[0], l_data[1], optimizer1=local_optimizer1, optimizer2= local_optimizer2)
-                self.layers.append(l)
-        except IndexError:
-            raise Exception('Bad layer compose')
+        self.optimizer = optimizer
+        
+        self.layers: list[InputLayer | Dense] = []
+        for layer in layers:
+            self.add(layer)
+        
         # print(self.layers)
         self.type_ = type_
         self.learning_rate = ALPHA
         self.class_number = class_number
         
+    
+    def getOptimizer(self, optimizer):
+        if type(optimizer) == str:
+            if optimizer == 'adam':
+                return Adam()
+        else:
+            if type(optimizer) == Adam:
+                return Adam(optimizer.b1, optimizer.b2, optimizer.e)
+        return BaseOprimizer()
+
         
+    def add(self, layer:Dense):
+        if len(self.layers) < 1:
+            if type(layer.prev_layer) != InputLayer:
+                raise Exception('Adding First Layer Error: incorrect layer input')
+            layer.optimizer1 = self.getOptimizer(self.optimizer)
+            layer.optimizer2 = self.getOptimizer(self.optimizer)
+            self.layers.append(layer)
+        else:
+            layer.setIn(self.layers[-1])
+            layer.optimizer1 = self.getOptimizer(self.optimizer)
+            layer.optimizer2 = self.getOptimizer(self.optimizer)
+            self.layers.append(layer)
+            
         
     def train(self, dataset, num_epochs, need_calculate_accuracy = False, need_calculate_loss = False):
         loss_arr = []
@@ -266,8 +299,8 @@ class Model:
                 x, y = dataset[i]
                 if type(y) == np.ndarray:
                     # passed += 1
-                    self.layers[0].set_input(x)
-                    for layer in self.layers[1:]:
+                    self.layers[0].prev_layer.set_input(x)
+                    for layer in self.layers:
                         layer.recalculate()
                     
                     z=self.layers[-1].get_results()
@@ -293,8 +326,8 @@ class Model:
                 
     def predict(self, x):
         
-        self.layers[0].set_input(x)
-        for layer in self.layers[1:]:
+        self.layers[0].prev_layer.set_input(x)
+        for layer in self.layers:
             # print(layer.W)
             layer.recalculate()
         # print(self.layers[-1].t)
@@ -324,9 +357,6 @@ import numpy as np
 from sklearn import datasets
 iris = datasets.load_iris()
 
-INPUT_DIM = 4
-OUT_DIM = 3
-H_DIM = 10
 
 
 def tanh(t, dif=False):
@@ -391,8 +421,8 @@ if __name__ == '__main__':
     # dataset = [(iris.data[i][None, ...], to_full(iris.target[i], 3)) for i in range(len(iris.target))]
 
     # input_layer = InputLayer(4)
-    # first_layer = NeuronLayer(input_layer, 10, relu)
-    # second_layer = NeuronLayer(first_layer, 3, softmax)
+    # first_layer = Dense(input_layer, 10, relu)
+    # second_layer = Dense(first_layer, 3, softmax)
     
 
     # ALPHA = 0.0002
@@ -441,19 +471,23 @@ if __name__ == '__main__':
     # for i in range(1000):
     #     data.append([np.array([randint(0, 100) / 10 for j in range(10)]), np.array( -1 ** randint(0, 1))])
         
-    from time import time
     # print(iris)
     dataset = [(iris.data[i][None, ...], to_full(iris.target[i], 3)) for i in range(len(iris.target))]
     random.shuffle(dataset)
     print(dataset[0])
     train = dataset[:len(dataset) - len(dataset)//15]
     test = dataset[-len(dataset)//15:]
-    model2 = Model([[4], [20, relu], [3, sigmoid]], 'Adam', type_='crossentropy', ALPHA=0.0001,class_number=3)
-    b = time()
-    loss_arr, accuracy_arr = model2.train(train, 400, need_calculate_loss=False, need_calculate_accuracy=True)
-    e = time()
-    print('train time:', e - b, 'sec.')
+    
+    
+    #code
+    model2 = Sequential('adam', ALPHA=0.0001)
+    model2.add(Dense(20, relu, input_shape=4))
+    model2.add(Dense(10, relu))
+    model2.add(Dense(3, sigmoid))
+    loss_arr, accuracy_arr = model2.train(train, 400, need_calculate_loss=False, need_calculate_accuracy=True)   
     print('test accuraccy', model2.calc_accuracy(train), model2.calc_accuracy(test))
+    
+    
     
     import matplotlib.pyplot as plt
     plt.plot(loss_arr)

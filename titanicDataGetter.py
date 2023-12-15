@@ -36,14 +36,12 @@ for i in range(714):
     
 print(len(dataset))
 
-model = Model([[4], [20, relu], [10, relu], [2, softmax]], 'Adam', type_='crossentropy', ALPHA=0.001)
+model = Sequential('adam', [Dense(20, relu, input_shape=4), Dense(10, relu), Dense(2, softmax)], ALPHA=0.001)
 loss_arr, accuracy_arr = model.train(dataset, need_calculate_loss=True, need_calculate_accuracy=True, num_epochs=100)
+print(model.calc_accuracy(dataset))
 
 for i in range(30):
     print(model.predict(dataset[i][0]), dataset[i][1])
-
-print(model.calc_accuracy(dataset))
-
 
 import matplotlib.pyplot as plt
 plt.plot(loss_arr)
