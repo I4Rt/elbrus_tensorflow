@@ -193,7 +193,8 @@ class Dense(Layer):
         return self.__H_DIM
 
     def evaluate(self, y, is_last = True, learning_rate=0.00002, input_ = None, ce_type = 1):
-        if is_last:       # where is softmax???
+        if is_last:
+            # where is softmax???
             # y_full = to_full(y, self.__H_DIM)   # here Y params is a row matrix of wanted result class
             if ce_type in [1, 2] and self.func.__name__ in ['softmax', 'tanh', 'sigmoid']:
                 if ce_type == 1:
@@ -210,6 +211,10 @@ class Dense(Layer):
                         dE_dt =(1-self.outs)*y
                     elif self.func.__name__ == 'tanh':
                         dE_dt = (1/self.outs-self.outs)*y # 1 - y + self.outs - y/self.outs
+            elif ce_type in [3]:
+                if ce_type == 3:
+                    dE_dt = self.func(self.t, dif = True)*(self.outs - y)
+            
             else:
                 dE_dt = -y/self.outs * self.func(self.t, dif=True)
             dE_dW = self.prev_layer.get_results().T @ dE_dt
@@ -259,6 +264,7 @@ class Sequential:
         
         # print(self.layers)
         self.type_ = type_
+        print(self.type_)
         self.learning_rate = ALPHA
         self.class_number = class_number
         
@@ -312,6 +318,12 @@ class Sequential:
                     elif self.type_ == 'binary_crossentropy':
                         # Backward
                         self.layers[-1].evaluate(y, learning_rate=self.learning_rate, input_ = x, ce_type=2)
+                    elif self.type_ == 'mean_squared_error':
+                        # Backward
+                        self.layers[-1].evaluate(y, learning_rate=self.learning_rate, input_ = x, ce_type=3)
+                    elif self.type_ == 'test':
+                        # Backward
+                        self.layers[-1].evaluate(y, learning_rate=self.learning_rate, input_ = x, ce_type=4)
                     else:
                         raise Exception('Unknown model type')
                 
@@ -368,6 +380,36 @@ def relu(t, dif=False):
     if dif:
         return (t >= 0).astype(float)
     return np.maximum(t, 0)
+
+def linear(t, dif=False):
+    if dif:
+        return np.ones_like(t)
+    return t
+
+def backLinear(t, dif=False):
+    if dif:
+        return -1 *np.ones_like(t)
+    return -t
+def inverseProportion(t, dif=False):
+    if dif:
+        return -2/(t*3 + 0.1)
+    return 1/(t**2 + 0.1)
+
+def sin(t, dif=False):
+    if dif:
+        return np.cos(t)
+    return np.sin(t)
+
+def power3(t, dif=False):
+    if dif:
+        return 3*(t**2)
+    return t**2
+
+def cos(t, dif=False):
+    if dif:
+        return -np.sin(t)
+    return np.cos(t)
+
 def sigmoid(t, dif=False):
     if dif:
         return sigmoid(t)*(1-sigmoid(t))
