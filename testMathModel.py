@@ -26,9 +26,9 @@ from ClassModules import *
 
 model = Sequential('adam', ALPHA=0.00015, type_='mean_squared_error')
 model.add(Dense(72, linear, input_shape=2))
-model.add(Dense(32, cos))
+model.add(Dense(32, sin))
 model.add(Dense(16, backLinear))
-model.add(Dense(32, linear))
+model.add(Dense(64, linear))
 # model.add(Dense(32, inverseProportion))
 
 model.add(Dense(1, linear))
@@ -38,11 +38,14 @@ for i in range(int(len(x_input)//3)*2):
     x = np.array([x_input[i]])
     y = np.array([y_input[i]])
     data.append([x, y])
-
-
-accuracy, loss = model.train(data, 100, need_calculate_loss=False)
-
+print(data[0])
+b=time()
+model.train(data, 10000, need_calculate_loss=False, batch_size=16)
+print('train time', time() - b)
 results = [model.predict(np.array([ordered_X[i]]))[0][0] for i in range(len(ordered_X))]
+
+print(model.predict(np.array([ordered_X[0]])), ordered_Y[0])
+
 plt.plot(ordered_Y)
 plt.plot(results)
 

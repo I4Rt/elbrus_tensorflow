@@ -1,5 +1,10 @@
 import numpy as np
-from ClassModules import *
+
+from model.Sequential import Sequential
+from model.layers.Dense import Dense
+from model.actiators.functional import *
+# from model.tools.OneHotEncoderTools import OneHotEncoderTools
+
 
 from pandas import DataFrame
 
@@ -36,16 +41,20 @@ for i in range(714):
     
 print(len(dataset))
 
-model = Sequential('adam', [Dense(20, relu, input_shape=4), Dense(10, relu), Dense(2, softmax)], ALPHA=0.001)
-loss_arr, accuracy_arr = model.train(dataset, need_calculate_loss=True, need_calculate_accuracy=True, num_epochs=100)
+model = Sequential('adam', [Dense(40, 'relu', input_shape=4), Dense(10, 'backLinear'), Dense(20, 'linear'), Dense(2, 'softmax')], ALPHA=0.001)
+loss_arr, accuracy_arr = model.train(dataset, need_calculate_loss=True, need_calculate_accuracy=True, num_epochs=6000, batch_size=20)
 print(model.calc_accuracy(dataset))
 
-for i in range(30):
-    print(model.predict(dataset[i][0]), dataset[i][1])
+# for i in range(30):
+#     print(model.predict(dataset[i][0]), dataset[i][1])
 
 import matplotlib.pyplot as plt
-plt.plot(loss_arr)
-plt.plot(accuracy_arr)    
+plt.plot(loss_arr, label=r'$loss func$')
+plt.plot(accuracy_arr, label=r'$accuracy$')    
+plt.legend(fontsize=16)
+plt.minorticks_on()
+plt.title('Процесс обучения на "Titanic"')
+
 plt.show()
 
 

@@ -1,12 +1,16 @@
 from __future__ import annotations
 import numpy as np
 from time import sleep, time
+import sys
 
 np.seterr(divide='ignore', invalid='ignore')
 
 ts = []
 
 class Optimizer:
+    
+    def __init__(self, *args, **kwargs) -> None:
+        pass
     
     def calc(self, input):
         return input
@@ -17,6 +21,7 @@ class BaseOprimizer(Optimizer):
         return res
     
 class Adam(Optimizer):
+    counter = 0
     def __init__(self, b1 = 0.9, b2 = 0.999, e=10**-8):
         self.b1 = b1
         self.b2 = b2
@@ -27,7 +32,9 @@ class Adam(Optimizer):
         self.t = 1
         
     def calc(self, input:np.array, learning_rate:float, dInput:np.array):
-        # print(input)
+        # Adam.counter += 1
+        # if Adam.counter > 6:
+        #     sys.exit()
         m_t = self.b1 * self.m_prev + (1 - self.b1)*dInput
         v_t = self.b2 * self.v_prev + (1 - self.b2)*(dInput**2)
         # print('m_t', m_t, sep='\n')
@@ -39,7 +46,6 @@ class Adam(Optimizer):
         
         step = learning_rate * M_t / (np.sqrt(V_t) + self.e)
         
-
         res = input - step
         
         self.t += 1
@@ -48,13 +54,6 @@ class Adam(Optimizer):
         
         return res
     
-
-
-
-
-
-
-
 def soft_results(data):
     # print(data)
     
@@ -74,8 +73,8 @@ def to_full(y, num_classes):
     -y: correct class index
     -num_classes: len of classes sequency
     """
-    y_full = np.zeros((1, num_classes))
-    y_full[0, y] = 1
+    y_full = np.zeros(num_classes)
+    y_full[y] = 1
     return y_full
 
 class Layer:
@@ -214,9 +213,11 @@ class Dense(Layer):
             elif ce_type in [3]:
                 if ce_type == 3:
                     dE_dt = self.func(self.t, dif = True)*(self.outs - y)
-            
             else:
                 dE_dt = -y/self.outs * self.func(self.t, dif=True)
+            # print(y, self.outs, dE_dt, sep='\n')
+            # dE_dt = np.sum(dE_dt, axis=0, keepdims=True)/len(dE_dt)
+            # print(dE_dt)
             dE_dW = self.prev_layer.get_results().T @ dE_dt
             dE_db = np.sum(dE_dt, axis=0, keepdims=True)
             dE_dh_prev = dE_dt @ self.W.T
@@ -224,13 +225,13 @@ class Dense(Layer):
             dE_dt = y * self.func(self.t, dif=True) # here Y params is a derivative matrix of current layer outs
             # print('y', y, 'prevouts', self.prev_layer.get_results(), '\n de_dt', dE_dt)
             dE_dW = self.prev_layer.get_results().T @ dE_dt
-            dE_db = dE_dt
+            dE_db = np.sum(dE_dt, axis=0, keepdims=True)
             dE_dh_prev = dE_dt @ self.W.T
             # print('dE_dh_prev', dE_dh_prev)
-            
+        # print('prev', self.__class__, is_last, self.W.size, self.b.size)
         self.W = self.optimizer1.calc(self.W, learning_rate, dE_dW)
         self.b = self.optimizer2.calc(self.b, learning_rate, dE_db)
-        
+        # print('new', self.__class__, is_last, self.W.size, self.b.size)
         if type(self.prev_layer) == InputLayer:
             return None
         return self.prev_layer.evaluate(dE_dh_prev, is_last=False, learning_rate=learning_rate, ce_type=ce_type)
@@ -293,16 +294,20 @@ class Sequential:
             self.layers.append(layer)
             
         
-    def train(self, dataset, num_epochs, need_calculate_accuracy = False, need_calculate_loss = False):
+    def train(self, dataset, num_epochs, need_calculate_accuracy = False, need_calculate_loss = False, batch_size = 8):
         loss_arr = []
         accuracy_arr = []
         
         for ep in range(num_epochs):
-            # print('ep', ep)
             
-            # random.shuffle(dataset)
-            for i in range(len(dataset)):
-                x, y = dataset[i]
+            
+            random.shuffle(dataset)
+            for i in range(len(dataset) // batch_size):
+
+                batch_x, batch_y = zip(*dataset[i*batch_size : i*batch_size+batch_size])
+                # print(batch_y)
+                x = np.concatenate(batch_x, axis=0)
+                y = np.array(batch_y)
                 if type(y) == np.ndarray:
                     # passed += 1
                     self.layers[0].prev_layer.set_input(x)
@@ -430,93 +435,16 @@ def sparse_cross_entropy(z, y):
         return -np.log(z[0, 0])
         
 
-def to_full(y, num_classes):
-    y_full = np.zeros((1, num_classes))
-    y_full[0, y] = 1
-    return y_full
+
 
 
     
-
-
-
-# def predict(x):
-#     input_layer.set_input(x)
-#     first_layer.recalculate()
-#     second_layer.recalculate()
-    
-#     z=second_layer.get_results()
-#     return z
-
-# def calc_accuracy():
-#     correct = 0
-#     for x, y in dataset:
-#         z = predict(x)
-#         y_pred = np.argmax(z)
-#         if y_pred == y:
-#             correct += 1
-#     acc = correct / len(dataset)
-#     return acc
 
 if __name__ == '__main__':
     
-    # dataset = [(iris.data[i][None, ...], to_full(iris.target[i], 3)) for i in range(len(iris.target))]
-
-    # input_layer = InputLayer(4)
-    # first_layer = Dense(input_layer, 10, relu)
-    # second_layer = Dense(first_layer, 3, softmax)
-    
-
-    # ALPHA = 0.0002
-    # NUM_EPOCHS = 400
-    # # BATCH_SIZE = 50
-
-    # loss_arr = []
-    # accuracy_arr = []
-    # for ep in range(NUM_EPOCHS):
-    #     random.shuffle(dataset)
-    #     for i in range(len(dataset)):
-    #         x, y = dataset[i]
-
-    #         input_layer.set_input(x)
-    #         first_layer.recalculate()
-    #         second_layer.recalculate()
-            
-    #         z=second_layer.get_results()
-    #         E = sparse_cross_entropy(z, y)
-
-    #         # Backward
-    #         second_layer.evaluate(y, learning_rate=ALPHA)
-
-
-    #         # accuracy_arr.append(calc_accuracy())
-    #         loss_arr.append(E)
-
-    
-    # model = Model([[4], [10, relu], [3, softmax]], class_number=3)
-    
-    # # print(model.predict(dataset[0][0]))
-    
-    # loss_arr, accuracy_arr = model.train(dataset, 400, need_calculate_loss=False, need_calculate_accuracy=False)
-    # # accuracy = model.calc_accuracy(dataset)
-    # # print("Accuracy:", accuracy)
-    
-    # print(model.predict(dataset[0][0]))
-    
-    # import matplotlib.pyplot as plt
-    # plt.plot(loss_arr)
-    # plt.plot(accuracy_arr)    
-    # plt.show()
-    
-    # from random import randint
-    # data = []
-    # for i in range(1000):
-    #     data.append([np.array([randint(0, 100) / 10 for j in range(10)]), np.array( -1 ** randint(0, 1))])
-        
-    # print(iris)
     dataset = [(iris.data[i][None, ...], to_full(iris.target[i], 3)) for i in range(len(iris.target))]
     random.shuffle(dataset)
-    print(dataset[0])
+    # print(dataset[0])
     train = dataset[:len(dataset) - len(dataset)//15]
     test = dataset[-len(dataset)//15:]
     
@@ -525,8 +453,8 @@ if __name__ == '__main__':
     model2 = Sequential('adam', ALPHA=0.0001)
     model2.add(Dense(20, relu, input_shape=4))
     model2.add(Dense(10, relu))
-    model2.add(Dense(3, sigmoid))
-    loss_arr, accuracy_arr = model2.train(train, 400, need_calculate_loss=False, need_calculate_accuracy=True)   
+    model2.add(Dense(3, softmax))
+    loss_arr, accuracy_arr = model2.train(train, 1000, need_calculate_loss=True, need_calculate_accuracy=True, batch_size=4)   
     print('test accuraccy', model2.calc_accuracy(train), model2.calc_accuracy(test))
     
     
