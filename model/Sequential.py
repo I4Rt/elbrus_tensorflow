@@ -16,7 +16,7 @@ from model.tools.ProgressBar import ProgressBar
 
 class Sequential:
     
-    def __init__(self, optimizer:Optimizer|str, layers:list[Layer] = [], type_='crossentropy', ALPHA = 0.0002 , class_number = 2):
+    def __init__(self, optimizer:Optimizer|str, layers:list[Layer] = [], type_='crossentropy', ALPHA = 0.0002 ,  class_number = 2):
         
         self.optimizer = optimizer
         
@@ -55,7 +55,7 @@ class Sequential:
             self.layers.append(layer)
             
         
-    def train(self, dataset, num_epochs, need_calculate_accuracy = False, need_calculate_loss = False, batch_size = 8):
+    def fit(self, dataset, num_epochs, need_calculate_accuracy = False, need_calculate_loss = False, batch_size = 8):
         loss_arr = []
         accuracy_arr = []
         b = None
@@ -83,6 +83,8 @@ class Sequential:
                         self.layers[-1].evaluate(y, learning_rate=self.learning_rate, input_ = x, ce_type=1)
                     elif self.type_ == 'binary_crossentropy':
                         # Backward
+                        if self.layers[-1].get_outs_number() != 1: 
+                            raise Exception('Wrong last layer outs size for BCE')
                         self.layers[-1].evaluate(y, learning_rate=self.learning_rate, input_ = x, ce_type=2)
                     elif self.type_ == 'mean_squared_error':
                         # Backward
@@ -118,13 +120,20 @@ class Sequential:
         for x, y in dataset:
             if type(y) == np.ndarray:
                 z = self.predict(x)
+                # print('size', z.size)
+                # print('max_y', np.max(y))
+                # print('max_z', np.max(z))
                 if z.size > 1:
                     y_pred = np.argmax(z) # get position ?
                     if y_pred == np.argmax(y):
                         correct += 1
                 else:
-                    if np.max(z) >= 0.0 and np.max(y):
-                        correct += 1
+                    if np.max(y):
+                        if np.max(z) >= 0.5:
+                            correct += 1
+                    else:
+                        if np.max(z) < 0.5:
+                            correct += 1
             else:
                 passed += 1
         acc = correct / ( len(dataset) - passed )

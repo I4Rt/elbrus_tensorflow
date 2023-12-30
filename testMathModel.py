@@ -22,7 +22,10 @@ from matplotlib import pyplot as plt
 
 
 
-from ClassModules import *
+from model.Sequential import Sequential
+from model.layers.Dense import Dense
+from model.actiators.functional import *
+from time import time
 
 model = Sequential('adam', ALPHA=0.00015, type_='mean_squared_error')
 model.add(Dense(72, linear, input_shape=2))
@@ -40,8 +43,8 @@ for i in range(int(len(x_input)//3)*2):
     data.append([x, y])
 print(data[0])
 b=time()
-model.train(data, 10000, need_calculate_loss=False, batch_size=16)
-print('train time', time() - b)
+model.fit(data, 10000, need_calculate_loss=False, batch_size=16)
+print('fit time', time() - b)
 results = [model.predict(np.array([ordered_X[i]]))[0][0] for i in range(len(ordered_X))]
 
 print(model.predict(np.array([ordered_X[0]])), ordered_Y[0])

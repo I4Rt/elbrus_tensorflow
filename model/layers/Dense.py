@@ -52,21 +52,23 @@ class Dense(Layer):
         if is_last:
             # where is softmax???
             # y_full = to_full(y, self.__H_DIM)   # here Y params is a row matrix of wanted result class
-            if ce_type in [1, 2] and self.func.__name__ in ['softmax', 'tanh', 'sigmoid']:
+            if ce_type in [1, 2] and self.func.__name__ in ['softmax', 'tanh', 'sigmoid', 'softZeroToOne']:
                 if ce_type == 1:
                     if self.func.__name__ == 'softmax':
                         dE_dt = self.outs - y
-                    elif self.func.__name__ == 'sigmoid':
-                        dE_dt = self.outs - y
-                    elif self.func.__name__ == 'tanh':
-                        dE_dt = self.outs - y # 1 - y + self.outs - y/self.outs
+                    # elif self.func.__name__ == 'sigmoid':
+                    #     dE_dt = self.outs - y
+                    # elif self.func.__name__ == 'tanh':
+                    #     dE_dt = self.outs - y # 1 - y + self.outs - y/self.outs
+                    else:
+                        dE_dt = self.outs - y # TODO: wrong formula
                 elif ce_type == 2:
-                    if self.func.__name__ == 'softmax':
-                        dE_dt = self.outs - y
-                    elif self.func.__name__ == 'sigmoid':
-                        dE_dt =(1-self.outs)*y
-                    elif self.func.__name__ == 'tanh':
-                        dE_dt = (1/self.outs-self.outs)*y # 1 - y + self.outs - y/self.outs
+                    if self.func.__name__ in ['sigmoid', 'softZeroToOne']:
+                        dE_dt = -(y/(self.outs + 0.000001) + (y - 1)/(1 - self.outs + 0.000001))*self.func(self.t, dif = True)
+                    elif self.func.__name__ in ['tanh', 'softmax']:
+                        raise Exception('Not avaliable to use tanh, softmax in BCE')
+                    else:
+                        raise Exception('Not avaliable fuction for in BCE')
             elif ce_type in [3]:
                 if ce_type == 3:
                     dE_dt = self.func(self.t, dif = True)*(self.outs - y)
@@ -92,4 +94,3 @@ class Dense(Layer):
         if type(self.prev_layer) == InputLayer:
             return None
         return self.prev_layer.evaluate(dE_dh_prev, is_last=False, learning_rate=learning_rate, ce_type=ce_type)
-      

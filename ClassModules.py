@@ -294,7 +294,7 @@ class Sequential:
             self.layers.append(layer)
             
         
-    def train(self, dataset, num_epochs, need_calculate_accuracy = False, need_calculate_loss = False, batch_size = 8):
+    def fit(self, dataset, num_epochs, need_calculate_accuracy = False, need_calculate_loss = False, batch_size = 8):
         loss_arr = []
         accuracy_arr = []
         
@@ -454,7 +454,7 @@ if __name__ == '__main__':
     model2.add(Dense(20, relu, input_shape=4))
     model2.add(Dense(10, relu))
     model2.add(Dense(3, softmax))
-    loss_arr, accuracy_arr = model2.train(train, 1000, need_calculate_loss=True, need_calculate_accuracy=True, batch_size=4)   
+    loss_arr, accuracy_arr = model2.fit(train, 1000, need_calculate_loss=True, need_calculate_accuracy=True, batch_size=4)   
     print('test accuraccy', model2.calc_accuracy(train), model2.calc_accuracy(test))
     
     
