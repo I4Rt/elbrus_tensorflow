@@ -1,20 +1,12 @@
 from __future__ import annotations
-
-import json
-
-import h5py
 import numpy as np
 from time import sleep, time
-import sys
 
 np.seterr(divide='ignore', invalid='ignore')
 
 ts = []
 
 class Optimizer:
-    
-    def __init__(self, *args, **kwargs) -> None:
-        pass
     
     def calc(self, input):
         return input
@@ -25,7 +17,6 @@ class BaseOprimizer(Optimizer):
         return res
     
 class Adam(Optimizer):
-    counter = 0
     def __init__(self, b1 = 0.9, b2 = 0.999, e=10**-8):
         self.b1 = b1
         self.b2 = b2
@@ -36,9 +27,7 @@ class Adam(Optimizer):
         self.t = 1
         
     def calc(self, input:np.array, learning_rate:float, dInput:np.array):
-        # Adam.counter += 1
-        # if Adam.counter > 6:
-        #     sys.exit()
+        # print(input)
         m_t = self.b1 * self.m_prev + (1 - self.b1)*dInput
         v_t = self.b2 * self.v_prev + (1 - self.b2)*(dInput**2)
         # print('m_t', m_t, sep='\n')
@@ -50,6 +39,7 @@ class Adam(Optimizer):
         
         step = learning_rate * M_t / (np.sqrt(V_t) + self.e)
         
+
         res = input - step
         
         self.t += 1
@@ -58,6 +48,13 @@ class Adam(Optimizer):
         
         return res
     
+
+
+
+
+
+
+
 def soft_results(data):
     # print(data)
     
@@ -77,8 +74,8 @@ def to_full(y, num_classes):
     -y: correct class index
     -num_classes: len of classes sequency
     """
-    y_full = np.zeros(num_classes)
-    y_full[y] = 1
+    y_full = np.zeros((1, num_classes))
+    y_full[0, y] = 1
     return y_full
 
 class Layer:
@@ -174,7 +171,7 @@ class Dense(Layer):
         self.W = (self.W - 0.5) * 2 * np.sqrt(1/self.__H_DIM)     # new
         self.b = (self.b - 0.5) * 2 * np.sqrt(1/self.__H_DIM)     # new
         
-        self.func = relu if activation == 'relu' else softmax if activation == 'softmax' else sigmoid if activation == 'sigmoid' else activation
+        self.func = activation
         self.outs = None
         self.optimizer1 = optimizer1
         self.optimizer2 = optimizer2
@@ -217,11 +214,9 @@ class Dense(Layer):
             elif ce_type in [3]:
                 if ce_type == 3:
                     dE_dt = self.func(self.t, dif = True)*(self.outs - y)
+            
             else:
                 dE_dt = -y/self.outs * self.func(self.t, dif=True)
-            # print(y, self.outs, dE_dt, sep='\n')
-            # dE_dt = np.sum(dE_dt, axis=0, keepdims=True)/len(dE_dt)
-            # print(dE_dt)
             dE_dW = self.prev_layer.get_results().T @ dE_dt
             dE_db = np.sum(dE_dt, axis=0, keepdims=True)
             dE_dh_prev = dE_dt @ self.W.T
@@ -229,13 +224,13 @@ class Dense(Layer):
             dE_dt = y * self.func(self.t, dif=True) # here Y params is a derivative matrix of current layer outs
             # print('y', y, 'prevouts', self.prev_layer.get_results(), '\n de_dt', dE_dt)
             dE_dW = self.prev_layer.get_results().T @ dE_dt
-            dE_db = np.sum(dE_dt, axis=0, keepdims=True)
+            dE_db = dE_dt
             dE_dh_prev = dE_dt @ self.W.T
             # print('dE_dh_prev', dE_dh_prev)
-        # print('prev', self.__class__, is_last, self.W.size, self.b.size)
+            
         self.W = self.optimizer1.calc(self.W, learning_rate, dE_dW)
         self.b = self.optimizer2.calc(self.b, learning_rate, dE_db)
-        # print('new', self.__class__, is_last, self.W.size, self.b.size)
+        
         if type(self.prev_layer) == InputLayer:
             return None
         return self.prev_layer.evaluate(dE_dh_prev, is_last=False, learning_rate=learning_rate, ce_type=ce_type)
@@ -298,20 +293,16 @@ class Sequential:
             self.layers.append(layer)
             
         
-    def fit(self, dataset, num_epochs, need_calculate_accuracy = False, need_calculate_loss = False, batch_size = 8):
+    def train(self, dataset, num_epochs, need_calculate_accuracy = False, need_calculate_loss = False):
         loss_arr = []
         accuracy_arr = []
         
         for ep in range(num_epochs):
+            # print('ep', ep)
             
-            
-            random.shuffle(dataset)
-            for i in range(len(dataset) // batch_size):
-
-                batch_x, batch_y = zip(*dataset[i*batch_size : i*batch_size+batch_size])
-                # print(batch_y)
-                x = np.concatenate(batch_x, axis=0)
-                y = np.array(batch_y)
+            # random.shuffle(dataset)
+            for i in range(len(dataset)):
+                x, y = dataset[i]
                 if type(y) == np.ndarray:
                     # passed += 1
                     self.layers[0].prev_layer.set_input(x)
@@ -372,210 +363,6 @@ class Sequential:
                 passed += 1
         acc = correct / ( len(dataset) - passed )
         return acc
-
-    def to_json(self):
-        json_model = {}
-        json_model["class_name"] = self.__class__.__name__
-        config = {}
-        config['name'] = json_model['class_name'].lower()
-        layers = []
-        denses = self.layers
-        for i in range(len(denses)):
-            dense = denses[i]
-
-            if dense.prev_layer.__class__.__name__ == "InputLayer":
-                input_layer = dense.prev_layer
-
-                input_dense = {}
-                input_dense["module"] = 'keras.layer'
-                input_dense['class_name'] = input_layer.__class__.__name__
-                d_conf = {}
-                d_conf["batch_input_shape"] = [None, input_layer.get_outs_number()]
-                input_dense["dtype"] = 'float32'
-                input_dense["sparse"] = False
-                input_dense["ragged"] = False
-                input_dense["name"] = 'dense_input'
-                input_dense['config'] = d_conf
-
-                layers.append(input_dense)
-
-            l_dense = {}
-            l_dense["module"] = 'keras.layer'
-            l_dense['class_name'] = dense.__class__.__name__
-            d_conf = {}
-            d_conf["batch_input_shape"] = [None, dense.prev_layer.get_outs_number()]
-
-            name = 'dense' if i == 0 else f'dense_{i}'
-
-            d_conf['name'] = name
-            d_conf['trainable'] = True
-            d_conf['dtype'] = 'float32'
-            d_conf['units'] = dense.get_outs_number()
-            d_conf['activation'] = dense.func.__name__
-            d_conf['use_bias'] = True
-            kernel_init = {}
-            kernel_init["module"] = 'keras.initializers'
-            kernel_init["class_name"] = 'RandomUniform'
-            kernel_init["config"] = {}
-            kernel_init["registered_name"] = None
-            bias_init = {}
-            bias_init["module"] = 'keras.initializers'
-            bias_init["class_name"] = 'RandomUniform'
-            bias_init["config"] = {}
-            bias_init["registered_name"] = None
-            d_conf['kernel_initializer'] = kernel_init
-            d_conf['bias_initializer'] = bias_init
-            d_conf["kernel_regularizer"] = None
-            d_conf["bias_regularizer"] = None
-            d_conf["activity_regularizer"] = None
-            d_conf["kernel_constraint"] = None
-            d_conf["bias_constraint"] = None
-
-            l_dense['config'] = d_conf
-
-            layers.append(l_dense)
-
-        config["layers"] = layers
-        json_model["config"] = config
-        return json_model
-
-    def save_weights(self):
-        denses = self.layers
-        denses_for_save = []
-
-        for i in range(len(denses)):
-            layer = {}
-            dense = denses[i]
-            name = 'dense' if i == 0 else f'dense_{i}'
-
-            layer["name"] = name
-            weights = []
-            weights.append({'name': 'bias:0', 'numpy': dense.b[0]})
-            weights.append({'name': 'kernel:0', 'numpy': dense.W})
-            layer["weights"] = weights
-            denses_for_save.append(layer)
-        return denses_for_save
-
-    def save(self, filename):
-        with h5py.File(filename, "w") as hf:
-            # Сохраняем архитектуру
-            d = json.dumps(self.to_json())
-            hf.attrs["model_architecture"] = d
-
-            # Сохраняем веса
-            for layer in self.save_weights():
-                g = hf.create_group(layer['name'])
-                for weight in layer['weights']:
-                    weight_value = weight['numpy']
-                    g.create_dataset(weight['name'], data=weight_value)
-
-
-def load_model(filename):
-    with h5py.File(filename, "r") as hf:
-        model_architecture = hf.attrs["model_architecture"]
-        model_architecture = json.loads(model_architecture)
-        # print(model_architecture['config']['layers'][1])
-        model = Sequential('adam',
-                           [Dense(layer['config']['units'], layer['config']['activation'],
-                                  input_shape=layer['config']['batch_input_shape'][1])
-                            if i == 0 else Dense(layer['config']['units'], layer['config']['activation'])
-                            for i, layer in enumerate(model_architecture['config']['layers'][1:])], ALPHA=0.001)
-        for i, layer in enumerate(model.layers):
-            name = 'dense' if i == 0 else f'dense_{i}'
-            layer.b = hf[name]['bias:0'][...]
-            layer.W = hf[name]['kernel:0'][...]
-        print(model)
-        return model
-
-
-def save_layers_for_plot(model):
-    denses = model.layers
-    table_data = []
-    for i in range(len(denses)):
-        dense = denses[i]
-
-        if dense.prev_layer.__class__.__name__ == "InputLayer":
-            layer_input = []
-            layer_output = []
-
-            layer_input.append('dense_input')
-            layer_input.append("input:")
-            layer_input.append([None, dense.prev_layer.get_outs_number()])
-
-            layer_output.append(dense.prev_layer.__class__.__name__)
-            layer_output.append('output:')
-            layer_output.append([None, dense.prev_layer.get_outs_number()])
-
-            table_data.append(layer_input)
-            table_data.append(layer_output)
-
-        layer_input = []
-        layer_output = []
-
-        layer_input.append('dense' if i == 0 else f'dense_{i}')
-        layer_input.append("input:")
-        layer_input.append([None, dense.prev_layer.get_outs_number()])
-
-        layer_output.append(dense.__class__.__name__)
-        layer_output.append('output:')
-        layer_output.append([None, dense.get_outs_number()])
-
-        table_data.append(layer_input)
-        table_data.append(layer_output)
-    return table_data
-
-
-from PIL import Image, ImageDraw, ImageFont
-
-
-def plot_model(model, filename):
-    image = Image.new("RGB", (0, 0), "white")
-    draw = ImageDraw.Draw(image)
-    font = ImageFont.load_default()
-    table_data = save_layers_for_plot(model)
-
-    max_width = sum(
-        [max([draw.textsize(str(row[i]), font=font)[0] + 10 for row in table_data]) for i in range(len(table_data[0]))])
-    max_height = len(table_data) * 20 + ((len(table_data) // 2) - 1) * 40
-
-    # Создаем новое изображение
-    width, height = max_width + 20, max_height + 20
-    image = Image.new("RGB", (width, height), "white")
-    draw = ImageDraw.Draw(image)
-
-    # max_len = 0
-    start_x, all_x, prev_all_x = 0, 0, 0
-    x, y = 0, 10
-    cell_height = 20
-    line_height = 20
-    for i in range(0, len(table_data), 2):
-        rows = table_data[i:i + 2]
-        if not len(rows) == 0:
-            column_widths = [max([draw.textsize(str(row[i]), font=font)[0] + 10 for row in rows]) for i in
-                             range(len(rows[0]))]
-            all_x = sum(column_widths)
-            # max_len = all_x if all_x > max_len else max_len
-            if start_x == 0:
-                x = (max_width - all_x) / 2 + (width - max_width) / 2
-            if not prev_all_x == 0:
-                center = start_local_x + (prev_all_x / 2)
-                draw.line(((center, y), (center, y + line_height)), fill="black", width=1)
-                draw.polygon(
-                    [(center - 7, y + line_height), (center + 7, y + line_height), (center, y + line_height * 2)],
-                    fill='black')
-                y += line_height * 2
-                x = start_local_x + (prev_all_x - all_x) / 2
-            start_local_x = x
-            for row in rows:
-                for i, cell in enumerate(row):
-                    draw.rectangle([x, y, x + column_widths[i], y + cell_height], outline="black")
-                    draw.text((x + 5, y + 5), str(cell), font=font, fill="black")
-                    x += column_widths[i]
-                y += cell_height
-                x = start_local_x
-            prev_all_x = all_x
-    image.save(filename)
-    # image.show()
 
 import random
 import numpy as np
@@ -643,16 +430,93 @@ def sparse_cross_entropy(z, y):
         return -np.log(z[0, 0])
         
 
-
+def to_full(y, num_classes):
+    y_full = np.zeros((1, num_classes))
+    y_full[0, y] = 1
+    return y_full
 
 
     
+
+
+
+# def predict(x):
+#     input_layer.set_input(x)
+#     first_layer.recalculate()
+#     second_layer.recalculate()
+    
+#     z=second_layer.get_results()
+#     return z
+
+# def calc_accuracy():
+#     correct = 0
+#     for x, y in dataset:
+#         z = predict(x)
+#         y_pred = np.argmax(z)
+#         if y_pred == y:
+#             correct += 1
+#     acc = correct / len(dataset)
+#     return acc
 
 if __name__ == '__main__':
     
+    # dataset = [(iris.data[i][None, ...], to_full(iris.target[i], 3)) for i in range(len(iris.target))]
+
+    # input_layer = InputLayer(4)
+    # first_layer = Dense(input_layer, 10, relu)
+    # second_layer = Dense(first_layer, 3, softmax)
+    
+
+    # ALPHA = 0.0002
+    # NUM_EPOCHS = 400
+    # # BATCH_SIZE = 50
+
+    # loss_arr = []
+    # accuracy_arr = []
+    # for ep in range(NUM_EPOCHS):
+    #     random.shuffle(dataset)
+    #     for i in range(len(dataset)):
+    #         x, y = dataset[i]
+
+    #         input_layer.set_input(x)
+    #         first_layer.recalculate()
+    #         second_layer.recalculate()
+            
+    #         z=second_layer.get_results()
+    #         E = sparse_cross_entropy(z, y)
+
+    #         # Backward
+    #         second_layer.evaluate(y, learning_rate=ALPHA)
+
+
+    #         # accuracy_arr.append(calc_accuracy())
+    #         loss_arr.append(E)
+
+    
+    # model = Model([[4], [10, relu], [3, softmax]], class_number=3)
+    
+    # # print(model.predict(dataset[0][0]))
+    
+    # loss_arr, accuracy_arr = model.train(dataset, 400, need_calculate_loss=False, need_calculate_accuracy=False)
+    # # accuracy = model.calc_accuracy(dataset)
+    # # print("Accuracy:", accuracy)
+    
+    # print(model.predict(dataset[0][0]))
+    
+    # import matplotlib.pyplot as plt
+    # plt.plot(loss_arr)
+    # plt.plot(accuracy_arr)    
+    # plt.show()
+    
+    # from random import randint
+    # data = []
+    # for i in range(1000):
+    #     data.append([np.array([randint(0, 100) / 10 for j in range(10)]), np.array( -1 ** randint(0, 1))])
+        
+    # print(iris)
     dataset = [(iris.data[i][None, ...], to_full(iris.target[i], 3)) for i in range(len(iris.target))]
     random.shuffle(dataset)
-    # print(dataset[0])
+    print(dataset[0])
     train = dataset[:len(dataset) - len(dataset)//15]
     test = dataset[-len(dataset)//15:]
     
@@ -661,8 +525,8 @@ if __name__ == '__main__':
     model2 = Sequential('adam', ALPHA=0.0001)
     model2.add(Dense(20, relu, input_shape=4))
     model2.add(Dense(10, relu))
-    model2.add(Dense(3, softmax))
-    loss_arr, accuracy_arr = model2.fit(train, 1000, need_calculate_loss=True, need_calculate_accuracy=True, batch_size=4)   
+    model2.add(Dense(3, sigmoid))
+    loss_arr, accuracy_arr = model2.train(train, 400, need_calculate_loss=False, need_calculate_accuracy=True)   
     print('test accuraccy', model2.calc_accuracy(train), model2.calc_accuracy(test))
     
     
