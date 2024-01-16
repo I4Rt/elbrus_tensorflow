@@ -2,6 +2,7 @@ import numpy as np
 
 from model.Sequential import Sequential
 from model.layers.Dense import Dense
+from model.layers.Dropout import Dropout
 from model.actiators.functional import *
 # from model.tools.OneHotEncoderTools import OneHotEncoderTools
 
@@ -41,8 +42,8 @@ for i in range(714):
     
 print(len(dataset))
 
-model = Sequential('adam', [Dense(40, 'relu', input_shape=4),  Dense(1, 'softZeroToOne')], type_='binary_crossentropy', ALPHA=0.001)
-loss_arr, accuracy_arr = model.fit(dataset, need_calculate_loss=False, need_calculate_accuracy=True, num_epochs=200, batch_size=20)
+model = Sequential('adam', [Dense(40, 'relu', input_shape=4), Dense(1, 'softZeroToOne')], type_='binary_crossentropy', ALPHA=0.001)
+loss_arr, accuracy_arr = model.fit(dataset, need_calculate_loss=False, need_calculate_accuracy=True, num_epochs=100, batch_size=20)
 print(model.calc_accuracy(dataset))
 
 

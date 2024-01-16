@@ -59,6 +59,9 @@ class Sequential:
         loss_arr = []
         accuracy_arr = []
         b = None
+        # test_dataset = dataset[-len(dataset)//3::1]
+        # dataset = dataset[:len(dataset)*2//3]
+        
         for ep in range(num_epochs):
             ProgressBar.printProgressBar(ep + 1, num_epochs, prefix = 'Progress:', suffix = f'Complete | {round(time() - b, 3) if b else "?"} sec/era', length = 50)
             b = time()
