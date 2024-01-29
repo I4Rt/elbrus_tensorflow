@@ -26,6 +26,7 @@ from model.Sequential import Sequential
 from model.layers.Dense import Dense
 from model.actiators.functional import *
 from time import time
+from model.tools.PlotTools import PlotTools
 
 model = Sequential('adam', ALPHA=0.00015, type_='mean_squared_error')
 model.add(Dense(72, linear, input_shape=2))
@@ -54,6 +55,8 @@ plt.plot(results)
 
 
 plt.show()
+
+PlotTools.plot_model(model, 'plot_model.png')
 
 
 
