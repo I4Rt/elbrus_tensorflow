@@ -96,10 +96,15 @@ class SaveTools:
             # Сохраняем архитектуру
             d = json.dumps(cls.to_json(model))
             hf.attrs["model_architecture"] = d
+            hf.attrs['backend'] = 'elbrus_tensorflow'
+            model_weights = hf.create_group('model_weights')
             # Сохраняем веса
             for layer in cls.save_weights(model):
-                g = hf.create_group(layer['name'])
+                layer_name = model_weights.create_group(layer['name'])
+                group = layer_name.create_group(layer['name'])
                 for weight in layer['weights']:
                     weight_value = weight['numpy']
-                    g.create_dataset(weight['name'], data=weight_value)
+                    group.create_dataset(weight['name'], data=weight_value)
+                # layer_name.create_dataset(layer['name'], data=group)
+                # model_weights.create_dataset(layer['name'], data=group)
 
