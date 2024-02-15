@@ -8,7 +8,7 @@ class InputLayer(Layer):
     def set_input(self, inputs):
         self.X = np.asarray(inputs)
         
-    def get_outs_number(self) -> int:
+    def get_outs_number(self) -> int|tuple:
         return self.__H_DIM
     
     def get_results(self) -> np.ndarray:

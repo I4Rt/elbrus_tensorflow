@@ -1,7 +1,7 @@
 import numpy as np
 import random
 from time import time
-
+import sys
 from model.layers.Layer import Layer
 from model.layers.Dense import Dense
 from model.layers.InputLayer import InputLayer
@@ -20,7 +20,7 @@ class Sequential:
         
         self.optimizer = optimizer
         
-        self.layers: list[InputLayer | Dense] = []
+        self.layers: list[Layer] = []
         for layer in layers:
             self.add(layer)
         
@@ -63,17 +63,22 @@ class Sequential:
         # dataset = dataset[:len(dataset)*2//3]
         
         for ep in range(num_epochs):
-            ProgressBar.printProgressBar(ep + 1, num_epochs, prefix = 'Progress:', suffix = f'Complete | {round(time() - b, 3) if b else "?"} sec/era', length = 50)
+            ProgressBar.printProgressBar(ep, num_epochs, prefix = 'Progress:', suffix = f'Complete | {round(time() - b, 3) if b else "?"} sec/era', length = 50)
             b = time()
             random.shuffle(dataset)
             for i in range(len(dataset) // batch_size):
 
                 batch_x, batch_y = zip(*dataset[i*batch_size : i*batch_size+batch_size])
                 # print(batch_y)
-                x = np.concatenate(batch_x, axis=0)
+                
+                if batch_x[0].shape[0] == 1:               #TODO: КОСТЫЛЬ!
+                    x = np.concatenate(batch_x, axis=0)
+                else:
+                    x = np.asarray(batch_x)
                 y = np.array(batch_y)
                 if type(y) == np.ndarray:
                     # passed += 1
+                    
                     self.layers[0].prev_layer.set_input(x)
                     for layer in self.layers:
                         layer.recalculate()
@@ -104,11 +109,14 @@ class Sequential:
             if need_calculate_accuracy:
                 accuracy_arr.append(self.calc_accuracy(dataset))
                 
+        ProgressBar.printProgressBar(ep + 1, num_epochs, prefix = 'Progress:', suffix = f'Complete | {round(time() - b, 3) if b else "?"} sec/era', length = 50)
+                
                     
         return loss_arr, accuracy_arr
                 
     def predict(self, x):
-        
+        if len(x.shape) < 3:
+            x = np.array([x])
         self.layers[0].prev_layer.set_input(x)
         for layer in self.layers:
             # print(layer.W)

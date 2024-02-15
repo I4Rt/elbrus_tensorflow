@@ -9,6 +9,8 @@ from model.tools.MathTools import MathTools
 
 from model.actiators.ActivatorsHolder import ActivatorsHolder
 
+import sys
+
 class Dense(Layer):
     def __init__(self, units, activation, optimizer1:Optimizer = SGD(), optimizer2:Optimizer = SGD(), in_:Layer = None, input_shape = None):
         self.__H_DIM = units
@@ -41,6 +43,9 @@ class Dense(Layer):
         h = self.func(t)
         self.t = t
         self.outs= MathTools.soft_results(h)
+        # print('dence outs', self.outs)
+        # print('prev shape', self.prev_layer.get_outs_number())
+        
         
     def get_results(self)  -> np.ndarray:
         return self.outs
@@ -49,6 +54,7 @@ class Dense(Layer):
         return self.__H_DIM
 
     def evaluate(self, y, is_last = True, learning_rate=0.00002, input_ = None, ce_type = 1):
+        # print('dense in', y)
         if is_last:
             # where is softmax???
             # y_full = to_full(y, self.__H_DIM)   # here Y params is a row matrix of wanted result class
@@ -56,15 +62,18 @@ class Dense(Layer):
                 if ce_type == 1:
                     if self.func.__name__ == 'softmax':
                         dE_dt = self.outs - y
+                        # print('\n\n\nhere1\n\n\n')
                     # elif self.func.__name__ == 'sigmoid':
                     #     dE_dt = self.outs - y
                     # elif self.func.__name__ == 'tanh':
                     #     dE_dt = self.outs - y # 1 - y + self.outs - y/self.outs
                     else:
                         dE_dt = self.outs - y # TODO: wrong formula
+                        # print('\n\n\nhere2\n\n\n')
                 elif ce_type == 2:
                     if self.func.__name__ in ['sigmoid', 'softZeroToOne']:
                         dE_dt = -(y/(self.outs + 0.000001) + (y - 1)/(1 - self.outs + 0.000001))*self.func(self.t, dif = True)
+                        # print('\n\n\nhere2\n\n\n')
                     elif self.func.__name__ in ['tanh', 'softmax']:
                         raise Exception('Not avaliable to use tanh, softmax in BCE')
                     else:
@@ -72,11 +81,15 @@ class Dense(Layer):
             elif ce_type in [3]:
                 if ce_type == 3:
                     dE_dt = self.func(self.t, dif = True)*(self.outs - y)
+                    # print('\n\n\nhere3\n\n\n')
             else:
+                # print('mult res', y/self.outs)
+                # print(y.shape, self.outs.shape)
                 dE_dt = -y/self.outs * self.func(self.t, dif=True)
+                # print('\n\n\nhere4\n\n\n')
             # print(y, self.outs, dE_dt, sep='\n')
             # dE_dt = np.sum(dE_dt, axis=0, keepdims=True)/len(dE_dt)
-            # print(dE_dt)
+            # print('dE_dt',dE_dt)
             dE_dW = self.prev_layer.get_results().T @ dE_dt
             dE_db = np.sum(dE_dt, axis=0, keepdims=True)
             dE_dh_prev = dE_dt @ self.W.T
@@ -93,4 +106,6 @@ class Dense(Layer):
         # print('new', self.__class__, is_last, self.W.size, self.b.size)
         if type(self.prev_layer) == InputLayer:
             return None
+        # print('dE_dh_prev', dE_dh_prev)
+        # sys.exit()
         return self.prev_layer.evaluate(dE_dh_prev, is_last=False, learning_rate=learning_rate, ce_type=ce_type)

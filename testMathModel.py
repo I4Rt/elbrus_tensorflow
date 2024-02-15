@@ -20,8 +20,6 @@ from matplotlib import pyplot as plt
 
 # plt.plot(y_input)
 
-
-
 from model.Sequential import Sequential
 from model.layers.Dense import Dense
 from model.actiators.functional import *
@@ -43,7 +41,7 @@ for i in range(int(len(x_input)//3)*2):
     data.append([x, y])
 print(data[0])
 b=time()
-model.fit(data, 10000, need_calculate_loss=False, batch_size=16)
+model.fit(data, 10000, need_calculate_loss=False, batch_size=2)
 print('fit time', time() - b)
 results = [model.predict(np.array([ordered_X[i]]))[0][0] for i in range(len(ordered_X))]
 
@@ -52,8 +50,4 @@ print(model.predict(np.array([ordered_X[0]])), ordered_Y[0])
 plt.plot(ordered_Y)
 plt.plot(results)
 
-
 plt.show()
-
-
-

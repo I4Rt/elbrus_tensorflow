@@ -7,7 +7,7 @@ class Layer:
     def get_results(self):
         pass
     
-    def get_outs_number(self):
+    def get_outs_number(self)->int|tuple:
         pass
     
     def evaluate(self, *args, **kwargs):
