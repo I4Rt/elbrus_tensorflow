@@ -6,6 +6,8 @@ from model.optimizers.Adam import Adam
 from model.optimizers.SGD import SGD
 
 from model.actiators.ActivatorsHolder import ActivatorsHolder
+import sys
+
 
 
 class Conv2D(Layer):
@@ -78,7 +80,7 @@ class Conv2D(Layer):
         
         dF_dh = y * self.func(self.t, dif=True)
         
-        
+        b = self.b.copy()
         # dE_db = []
         for a in prev_layer_data:
             batch_dE_db = []
@@ -92,25 +94,20 @@ class Conv2D(Layer):
             self.b = self.optimizer.calc(self.b, learning_rate, batch_dE_db) # TODO: do not work or not correct
             # print(self.b)
             
+        c_z, c_y, c_x  = dF_dh.shape
+        a_y, a_x = self.prev_layer.get_outs_number()
         dE_da = []
-        for a in prev_layer_data:
-            linked_b = []
-            for j in range(self._a_y):
-                linked_in_column = []
-                linked_b_rows = self.b[:j+1, :][j-self._a_y:,:]
-                # print('\nrow', j)
-                for i in range(self._a_x):
-                    linked_in_row = linked_b_rows[:, :i+1][:, i-self._a_x:]
-                    # print(j,i, res_row)
-                    linked_in_column.append(linked_in_row)
-                linked_b.append(linked_in_column)
-
-            linked_b = np.asarray(linked_b, dtype=object)
-
-            # почленно перемножаем связанные B_x_y на A_x_y
-            parsed = linked_b * a
-            # высчитываем общую сумму для драдиента каждого числа A_x_y
-            batch_dE_da = list(map(lambda row: list(map(lambda item: np.sum(item), row)), parsed))
+        
+        for batch_inedx in range(c_z):
+            a = prev_layer_data[batch_inedx]
+            c = dF_dh[batch_inedx]
+            batch_dE_da = np.zeros((a_y, a_x))
+            pading_c = np.pad(c, ((self._b_y-1,c_y-1), (self._b_x-1,c_x-1)), 'constant', constant_values=(0))
+            for i in range(0,a_y,1):
+                for j in range(0,a_x,1):    
+                    for u in range(max(0, -1-i+self._b_y),min(self._b_y-i+a_y-1, self._b_y),1):
+                        for v in range(max(0, -1-j+self._b_x),min(self._b_x-j+a_x-1, self._b_x),1):
+                            batch_dE_da[i,j] += pading_c[i+u,j+v]*b[self._b_y-u-1,self._b_x-v-1]
             dE_da.append(batch_dE_da)
         dE_da = np.asarray(dE_da)
         # print('dE_da', dE_da)
