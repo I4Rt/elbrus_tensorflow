@@ -1,8 +1,46 @@
 import h5py
 import json
+# from model.Sequential import Sequential
 
 
 class SaveTools:
+
+    @classmethod
+    def layer_conf(cls, dense, count):
+        d_conf = {}
+        d_conf["batch_input_shape"] = [None, dense.prev_layer.get_outs_number()]
+
+        name = 'dense' if count == 0 else f'dense_{count}'
+
+        d_conf['name'] = name
+        d_conf['trainable'] = True
+        d_conf['dtype'] = 'float32'
+        if dense.__class__.__name__ == 'Conv2D':
+            d_conf['kernel_size'] = dense.b.shape
+        d_conf['units'] = dense.get_outs_number()
+        if not dense.__class__.__name__ == 'Flatten':
+            d_conf['activation'] = dense.func.__name__
+            d_conf['use_bias'] = True
+            kernel_init = {}
+            kernel_init["module"] = 'keras.initializers'
+            kernel_init["class_name"] = 'RandomUniform'
+            kernel_init["config"] = {}
+            kernel_init["registered_name"] = None
+            bias_init = {}
+            bias_init["module"] = 'keras.initializers'
+            bias_init["class_name"] = 'RandomUniform'
+            bias_init["config"] = {}
+            bias_init["registered_name"] = None
+            d_conf['kernel_initializer'] = kernel_init
+            d_conf['bias_initializer'] = bias_init
+            d_conf["kernel_regularizer"] = None
+            d_conf["bias_regularizer"] = None
+            d_conf["activity_regularizer"] = None
+            d_conf["kernel_constraint"] = None
+            d_conf["bias_constraint"] = None
+
+        return d_conf
+
 
     @classmethod
     def to_json(cls, model):
@@ -10,6 +48,8 @@ class SaveTools:
         json_model["class_name"] = model.__class__.__name__
         config = {}
         config['name'] = json_model['class_name'].lower()
+        config['optimizer'] = model.optimizer
+        config['alpha'] = model.learning_rate
         layers = []
         denses = model.layers
         for i in range(len(denses)):
@@ -34,34 +74,7 @@ class SaveTools:
             l_dense = {}
             l_dense["module"] = 'keras.layer'
             l_dense['class_name'] = dense.__class__.__name__
-            d_conf = {}
-            d_conf["batch_input_shape"] = [None, dense.prev_layer.get_outs_number()]
-
-            name = 'dense' if i == 0 else f'dense_{i}'
-
-            d_conf['name'] = name
-            d_conf['trainable'] = True
-            d_conf['dtype'] = 'float32'
-            d_conf['units'] = dense.get_outs_number()
-            d_conf['activation'] = dense.func.__name__
-            d_conf['use_bias'] = True
-            kernel_init = {}
-            kernel_init["module"] = 'keras.initializers'
-            kernel_init["class_name"] = 'RandomUniform'
-            kernel_init["config"] = {}
-            kernel_init["registered_name"] = None
-            bias_init = {}
-            bias_init["module"] = 'keras.initializers'
-            bias_init["class_name"] = 'RandomUniform'
-            bias_init["config"] = {}
-            bias_init["registered_name"] = None
-            d_conf['kernel_initializer'] = kernel_init
-            d_conf['bias_initializer'] = bias_init
-            d_conf["kernel_regularizer"] = None
-            d_conf["bias_regularizer"] = None
-            d_conf["activity_regularizer"] = None
-            d_conf["kernel_constraint"] = None
-            d_conf["bias_constraint"] = None
+            d_conf = cls.layer_conf(dense, i)
 
             l_dense['config'] = d_conf
 
@@ -83,8 +96,10 @@ class SaveTools:
 
             layer["name"] = name
             weights = []
-            weights.append({'name': 'bias:0', 'numpy': dense.b[0]})
-            weights.append({'name': 'kernel:0', 'numpy': dense.W})
+            if hasattr(dense, 'b'):
+                weights.append({'name': 'bias:0', 'numpy': dense.b})
+            if hasattr(dense, 'W'):
+                weights.append({'name': 'kernel:0', 'numpy': dense.W})
             layer["weights"] = weights
             denses_for_save.append(layer)
         return denses_for_save

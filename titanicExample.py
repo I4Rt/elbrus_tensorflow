@@ -96,3 +96,5 @@ plt.show()
 #         v_hat.assign(tf.maximum(v_hat, v))
 #         v = v_hat
 #     variable.assign_sub((m * alpha) / (tf.sqrt(v) + self.epsilon))
+
+from model.tools.LoadTools import LoadTools as lt
