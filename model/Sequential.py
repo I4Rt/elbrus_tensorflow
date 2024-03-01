@@ -32,7 +32,7 @@ class Sequential:
         self.type_ = type_
         print(self.type_)
         self.learning_rate = ALPHA
-        self.class_number = class_number
+        self.class_number = class_number  # TODO: delete
 
 
     def getOptimizer(self, optimizer):
@@ -70,16 +70,25 @@ class Sequential:
             ProgressBar.printProgressBar(ep, num_epochs, prefix = 'Progress:', suffix = f'Complete | {round(time() - b, 3) if b else "?"} sec/era', length = 50)
             b = time()
             random.shuffle(dataset)
+            # print(f'dataset: {dataset[0]}')
             for i in range(len(dataset) // batch_size):
 
                 batch_x, batch_y = zip(*dataset[i*batch_size : i*batch_size+batch_size])
+                # print(f'len(dataset): {len(dataset)}\n'
+                #       f'batch_size: {batch_size}\n'
+                #       f'batch_x: {batch_x}\n'
+                #       f'batch_y: {batch_y}\n')
+                # print(f'batch_x shape: {batch_x[0].shape}')
                 # print(batch_y)
                 
                 if batch_x[0].shape[0] == 1:               #TODO: КОСТЫЛЬ!
-                    x = np.concatenate(batch_x, axis=0)
+                    x = np.concatenate(batch_x, axis=0)  # bug
+                    # print(f'yes, shape_x: {x.shape}, x: {x}')
                 else:
                     x = np.asarray(batch_x)
+                    # print(f'no, shape_x: {x.shape}, x: {x}')
                 y = np.array(batch_y)
+                # print(f'y: {y}')
                 if type(y) == np.ndarray:
                     # passed += 1
                     

@@ -56,8 +56,10 @@ class Conv2D(Layer):
             
     def recalculate(self):
         batch = self.prev_layer.get_results()
+        # print(f'batch in conv2d: {type(batch)}, {batch}')
         res = []
         for a in batch:
+            # print(f'a in conv2d: {type(a)}, {a}')
             data = np.zeros((self.m, self.n))
             for i in range(self.m):
                 for j in range(self.n):
