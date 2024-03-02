@@ -32,17 +32,17 @@ for row in data[1:]:
 random.shuffle(matrix_dataset)
 cut_dataset = matrix_dataset[:3000]
            
-print(cut_dataset[0])
-sys.exit()
+# print(cut_dataset[0])
+# sys.exit()
 
 
 train_ = cut_dataset.copy()
 model = Sequential('adam', [Conv2D((2,2), linear, input_shape=(28,28)), Conv2D((2,2), linear), Flatten(), Dense(100, relu), Dense(20, softZeroToOne), Dense(10, softmax)], ALPHA=0.0005)
-acc, loss, = model.fit(train_, 30, batch_size=1, need_calculate_accuracy=True)
-plt.plot(acc)
-plt.plot(loss)
-plt.show()
+acc, loss, = model.fit(train_, 10, batch_size=1, need_calculate_accuracy=False)
+# plt.plot(acc)
+# plt.plot(loss)
+# plt.show()
 
-# print(model.predict(cut_dataset[0][0]), cut_dataset[0][1])
-# print(model.calc_accuracy(cut_dataset))
+print(model.predict(cut_dataset[0][0]), cut_dataset[0][1])
+print(model.calc_accuracy(cut_dataset))
 

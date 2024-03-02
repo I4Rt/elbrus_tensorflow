@@ -40,6 +40,7 @@ class Dense(Layer):
    
     def recalculate(self):
         t = self.prev_layer.get_results() @ self.W + self.b
+        # print(t.shape)
         h = self.func(t)
         self.t = t
         self.outs= MathTools.soft_results(h)

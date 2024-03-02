@@ -46,11 +46,12 @@ def sigmoid(t, dif=False):
     return 1/(1 + np.e **(-t))
 
 def softmax(t, dif=False):
-    # print(t)
+    
     out = np.exp(t)
     if dif:
         return 1 / out
-    # print(out)
+    if len(t.shape) > 2:
+        return out / np.sum(out, axis=2, keepdims=True)
     return out / np.sum(out, axis=1, keepdims=True)
 
 
